@@ -4,7 +4,7 @@
 
 No backend. No sign-up. No data leaves your browser.
 
-🔗 **[Live Demo](https://your-username.github.io/sql-forge)**
+🔗 **[Live Demo](https://sameer76-byte.github.io/sql-forge)**
 
 ![SQL Forge Screenshot](screenshot.png)
 
