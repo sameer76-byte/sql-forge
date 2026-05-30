@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Forge — Mock Data & Practice Engine</title>
+<script src="https://cdn.jsdelivr.net/npm/@faker-js/faker@8.4.1/dist/faker.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #1c2332;
+    --border: #30363d;
+    --border-hi: #58a6ff;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --text3: #484f58;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #f78166;
+    --accent4: #d2a8ff;
+    --yellow: #e3b341;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  html { background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 14px; }
+
+  body { min-height: 100vh; }
+
+  /* ── Layout ── */
+  .shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+
+  .sidebar {
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 28px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .logo {
+    font-family: var(--sans);
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.5px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-badge {
+    background: var(--accent);
+    color: var(--bg);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--mono);
+    letter-spacing: 1px;
+  }
+
+  .nav-group-label {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 12px 8px 6px;
+    font-family: var(--sans);
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text2);
+    font-size: 13px;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .nav-item:hover { background: var(--bg3); color: var(--text); }
+  .nav-item.active {
+    background: rgba(88, 166, 255, 0.1);
+    border-color: rgba(88, 166, 255, 0.3);
+    color: var(--accent);
+  }
+  .nav-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.5;
+    flex-shrink: 0;
+  }
+  .nav-item.active .nav-dot { opacity: 1; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text3);
+    line-height: 1.6;
+  }
+
+  /* ── Main ── */
+  .main { display: flex; flex-direction: column; }
+
+  .topbar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .topbar-title {
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .topbar-sub { font-size: 12px; color: var(--text2); margin-left: auto; }
+
+  .content { padding: 32px; flex: 1; max-width: 1100px; }
+
+  /* ── Panels ── */
+  .panel {
+    display: none;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .panel.active { display: flex; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    letter-spacing: 0.5px;
+    font-family: var(--sans);
+  }
+  .card-header-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+  .card-header-dot.green { background: var(--accent2); }
+  .card-header-dot.purple { background: var(--accent4); }
+  .card-header-dot.orange { background: var(--accent3); }
+
+  .card-body { padding: 20px; }
+
+  /* ── Form elements ── */
+  label.field-label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin-bottom: 8px;
+    font-family: var(--sans);
+    font-weight: 700;
+  }
+
+  textarea, input[type="number"], select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.15s;
+    line-height: 1.6;
+  }
+  textarea:focus, input:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(88,166,255,0.1);
+  }
+  textarea { resize: vertical; min-height: 180px; }
+  select option { background: var(--bg2); }
+
+  .row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+  .field { flex: 1; min-width: 160px; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 20px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { background: #79bcff; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text2);
+    border-color: var(--border);
+  }
+  .btn-ghost:hover { background: var(--bg3); color: var(--text); border-color: var(--border-hi); }
+  .btn-green {
+    background: var(--accent2);
+    color: var(--bg);
+    border-color: var(--accent2);
+  }
+  .btn-green:hover { background: #56d364; }
+  .btn-purple {
+    background: rgba(210,168,255,0.15);
+    color: var(--accent4);
+    border-color: rgba(210,168,255,0.3);
+  }
+  .btn-purple:hover { background: rgba(210,168,255,0.25); }
+
+  .btn-sm { padding: 5px 12px; font-size: 11px; }
+
+  /* ── Output area ── */
+  .output-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    padding: 16px;
+    max-height: 380px;
+    overflow-y: auto;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .output-box::-webkit-scrollbar { width: 6px; }
+  .output-box::-webkit-scrollbar-track { background: transparent; }
+  .output-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .output-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--bg3);
+  }
+  .output-status {
+    font-size: 11px;
+    color: var(--text3);
+    margin-left: auto;
+  }
+
+  /* ── Schema tree ── */
+  .schema-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .schema-table {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .schema-table-header {
+    background: var(--bg3);
+    padding: 9px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--sans);
+  }
+  .schema-table-name { color: var(--accent); }
+  .schema-col-list { padding: 4px 0; }
+  .schema-col {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 16px;
+    font-size: 12px;
+    transition: background 0.1s;
+  }
+  .schema-col:hover { background: var(--bg3); }
+  .col-name { color: var(--text); flex: 1; }
+  .col-type {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .col-type.int { background: rgba(88,166,255,0.12); color: var(--accent); }
+  .col-type.str { background: rgba(63,185,80,0.12); color: var(--accent2); }
+  .col-type.dec { background: rgba(227,179,65,0.12); color: var(--yellow); }
+  .col-type.date { background: rgba(210,168,255,0.12); color: var(--accent4); }
+  .col-type.other { background: rgba(139,148,158,0.12); color: var(--text2); }
+
+  .fk-badge {
+    font-size: 10px;
+    color: var(--accent3);
+    border: 1px solid rgba(247,129,102,0.3);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+  .pk-badge {
+    font-size: 10px;
+    color: var(--yellow);
+    border: 1px solid rgba(227,179,65,0.3);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+
+  /* ── Question cards ── */
+  .q-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .q-card-header {
+    padding: 12px 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+  }
+  .q-num {
+    background: var(--accent4);
+    color: var(--bg);
+    font-size: 10px;
+    font-weight: 700;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-family: var(--sans);
+    margin-top: 1px;
+  }
+  .q-num.green { background: var(--accent2); }
+  .q-num.orange { background: var(--accent3); }
+  .q-text { font-size: 13px; color: var(--text); line-height: 1.6; flex: 1; }
+  .q-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border: 1px solid;
+    flex-shrink: 0;
+    font-family: var(--sans);
+  }
+  .q-body { padding: 14px 18px; }
+  .answer-box {
+    background: var(--bg);
+    border: 1px solid rgba(210,168,255,0.2);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--accent4);
+    display: none;
+    white-space: pre-wrap;
+  }
+
+  /* ── JOIN diagram ── */
+  .join-diagram {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 14px 0;
+  }
+  .join-table-pill {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+  .join-table-pill strong { color: var(--accent); }
+  .join-arrow {
+    font-size: 11px;
+    color: var(--accent3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .join-arrow span { font-size: 10px; color: var(--text3); white-space: nowrap; }
+
+  /* ── Badges, tags ── */
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+    font-family: var(--sans);
+  }
+  .badge-easy { background: rgba(63,185,80,0.15); color: var(--accent2); }
+  .badge-medium { background: rgba(227,179,65,0.15); color: var(--yellow); }
+  .badge-hard { background: rgba(247,129,102,0.15); color: var(--accent3); }
+  .badge-join { background: rgba(88,166,255,0.15); color: var(--accent); }
+
+  /* ── Tabs ── */
+  .tab-row {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .tab {
+    padding: 10px 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+    font-family: var(--sans);
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Empty state ── */
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text3);
+    font-size: 13px;
+    line-height: 2;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+  }
+  .empty-icon { font-size: 28px; margin-bottom: 8px; }
+
+  /* ── Error ── */
+  .error-box {
+    background: rgba(247,129,102,0.08);
+    border: 1px solid rgba(247,129,102,0.3);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--accent3);
+  }
+
+  /* ── Progress/stats bar ── */
+  .stats-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .stat-chip {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 12px;
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .stat-chip strong { color: var(--text); }
+
+  /* ── Split layout ── */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+
+  /* ── Tooltip ── */
+  [data-tip] { position: relative; }
+  [data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 11px;
+    white-space: nowrap;
+    color: var(--text);
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  @media (max-width: 768px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .content { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      SQL Forge <span class="logo-badge">v2</span>
+    </div>
+
+    <div class="nav-group-label">Workspace</div>
+    <div class="nav-item active" onclick="showPanel('data')" id="nav-data">
+      <span class="nav-dot"></span> Data Generator
+    </div>
+    <div class="nav-item" onclick="showPanel('schema')" id="nav-schema">
+      <span class="nav-dot"></span> Schema Explorer
+    </div>
+    <div class="nav-item" onclick="showPanel('practice')" id="nav-practice">
+      <span class="nav-dot" style="background:var(--accent4)"></span> Practice Questions
+    </div>
+
+    <div class="nav-group-label" style="margin-top: 12px;">Quick Insert</div>
+    <div class="nav-item" onclick="loadSample('ecommerce')">
+      <span class="nav-dot" style="background:var(--accent2)"></span> E-Commerce Schema
+    </div>
+    <div class="nav-item" onclick="loadSample('hr')">
+      <span class="nav-dot" style="background:var(--yellow)"></span> HR Schema
+    </div>
+    <div class="nav-item" onclick="loadSample('inventory')">
+      <span class="nav-dot" style="background:var(--accent3)"></span> Inventory Schema
+    </div>
+    <div class="nav-item" onclick="loadSample('cars')">
+      <span class="nav-dot" style="background:var(--accent4)"></span> Cars Schema
+    </div>
+
+    <div class="sidebar-footer">
+      Fully client-side · Faker.js<br>No data leaves your browser
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="panel-title">Data Generator</div>
+      <div class="topbar-sub" id="schema-status">No schema parsed</div>
+    </div>
+
+    <div class="content">
+
+      <!-- ── PANEL: Data Generator ── -->
+      <div class="panel active" id="panel-data">
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-header-dot"></span>
+            SQL INPUT — paste one or more CREATE TABLE statements
+          </div>
+          <div class="card-body" style="display: flex; flex-direction: column; gap: 16px;">
+            <div>
+              <label class="field-label">CREATE TABLE statement(s)</label>
+              <textarea id="createSql" spellcheck="false" placeholder="CREATE TABLE orders (
+  id INT NOT NULL,
+  customer_id INT,
+  total_amount DECIMAL(10,2),
+  status VARCHAR(20),
+  created_at DATE
+);
+
+CREATE TABLE customers (
+  id INT NOT NULL,
+  first_name VARCHAR(50),
+  last_name VARCHAR(50),
+  email VARCHAR(100),
+  country VARCHAR(60)
+);"></textarea>
+            </div>
+            <div class="row">
+              <div class="field" style="max-width: 180px;">
+                <label class="field-label">Rows per table</label>
+                <input type="number" id="rowCount" value="15" min="1" max="5000">
+              </div>
+              <div class="field" style="max-width: 220px;">
+                <label class="field-label">Dialect</label>
+                <select id="dialectSelect">
+                  <option value="mysql">MySQL</option>
+                  <option value="postgres">PostgreSQL</option>
+                  <option value="sqlite">SQLite</option>
+                  <option value="mssql">SQL Server</option>
+                </select>
+              </div>
+              <div class="field" style="flex: 0;">
+                <button class="btn btn-primary" onclick="handleGenerateData()" id="genBtn">
+                  &#9654; Generate INSERTs
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-header-dot green"></span>
+            OUTPUT
+            <span id="output-lines" style="margin-left: auto; font-weight: 400; color: var(--text3);">—</span>
+          </div>
+          <div class="output-box" id="output">-- Your INSERT SQL will appear here --</div>
+          <div class="output-toolbar">
+            <button class="btn btn-ghost btn-sm" onclick="copyOutput()" id="copyBtn">&#128203; Copy</button>
+            <button class="btn btn-ghost btn-sm" onclick="downloadOutput()">&#8595; Download .sql</button>
+            <span class="output-status" id="output-status"></span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── PANEL: Schema Explorer ── -->
+      <div class="panel" id="panel-schema">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-header-dot"></span>
+            PARSED SCHEMA
+          </div>
+          <div class="card-body">
+            <div id="schema-render">
+              <div class="empty">
+                <div class="empty-icon">&#128269;</div>
+                No schema parsed yet.<br>Paste CREATE TABLE statements in the Data Generator and click Generate.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="join-card" style="display:none;">
+          <div class="card-header">
+            <span class="card-header-dot orange"></span>
+            DETECTED RELATIONSHIPS
+          </div>
+          <div class="card-body">
+            <div id="join-render"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PANEL: Practice Questions ── -->
+      <div class="panel" id="panel-practice">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-header-dot purple"></span>
+            QUESTION SETTINGS
+          </div>
+          <div class="card-body">
+            <div class="row" style="gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+              <div class="field">
+                <label class="field-label">Topic Focus</label>
+                <select id="topicSelect">
+                  <option value="mixed">Mixed (all topics)</option>
+                  <option value="basic">Basic SELECT & WHERE</option>
+                  <option value="aggregate">Aggregations</option>
+                  <option value="group">GROUP BY</option>
+                  <option value="joins">JOINs</option>
+                  <option value="subquery">Subqueries</option>
+                  <option value="window">Window Functions</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="field-label">Difficulty</label>
+                <select id="difficultySelect">
+                  <option value="easy">Easy — Fundamentals</option>
+                  <option value="medium" selected>Medium — Interview</option>
+                  <option value="hard">Hard — Senior / Advanced</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="field-label">Count</label>
+                <select id="qCountSelect">
+                  <option value="3">3 questions</option>
+                  <option value="5" selected>5 questions</option>
+                  <option value="8">8 questions</option>
+                  <option value="10">10 questions</option>
+                </select>
+              </div>
+              <div style="flex: 0;">
+                <button class="btn btn-purple" onclick="handleGenerateQuestions()">
+                  &#10024; Generate Questions
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="questionsContainer">
+          <div class="empty">
+            <div class="empty-icon">&#128218;</div>
+            Parse a schema first, then generate practice questions.<br>
+            Questions are tailored to your actual table columns and relationships.
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+</div>
+
+<script>
+// ================================================================
+// STATE
+// ================================================================
+let parsedTables = [];   // [{name, columns}]
+let detectedJoins = [];  // [{tableA, colA, tableB, colB}]
+let lastSQL = '';
+let lastTableName = 'table';
+
+// ================================================================
+// NAVIGATION
+// ================================================================
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  const titles = { data: 'Data Generator', schema: 'Schema Explorer', practice: 'Practice Questions' };
+  document.getElementById('panel-title').textContent = titles[name];
+}
+
+// ================================================================
+// SAMPLE SCHEMAS
+// ================================================================
+const SAMPLES = {
+  ecommerce: `CREATE TABLE customers (
+  id INT NOT NULL,
+  first_name VARCHAR(50),
+  last_name VARCHAR(50),
+  email VARCHAR(100),
+  country VARCHAR(60),
+  created_at DATE
+);
+
+CREATE TABLE products (
+  id INT NOT NULL,
+  name VARCHAR(100),
+  category VARCHAR(50),
+  price DECIMAL(10,2),
+  stock_quantity INT,
+  sku VARCHAR(20)
+);
+
+CREATE TABLE orders (
+  id INT NOT NULL,
+  customer_id INT,
+  total_amount DECIMAL(12,2),
+  status VARCHAR(20),
+  ordered_at DATE
+);
+
+CREATE TABLE order_items (
+  id INT NOT NULL,
+  order_id INT,
+  product_id INT,
+  quantity INT,
+  unit_price DECIMAL(10,2)
+);`,
+
+  hr: `CREATE TABLE departments (
+  id INT NOT NULL,
+  name VARCHAR(80),
+  location VARCHAR(80),
+  budget DECIMAL(14,2)
+);
+
+CREATE TABLE employees (
+  id INT NOT NULL,
+  first_name VARCHAR(50),
+  last_name VARCHAR(50),
+  email VARCHAR(100),
+  department_id INT,
+  salary DECIMAL(12,2),
+  hire_date DATE,
+  job_title VARCHAR(80),
+  is_active BOOLEAN
+);`,
+
+  inventory: `CREATE TABLE warehouses (
+  id INT NOT NULL,
+  name VARCHAR(80),
+  city VARCHAR(60),
+  country VARCHAR(60),
+  capacity INT
+);
+
+CREATE TABLE products (
+  id INT NOT NULL,
+  sku VARCHAR(20),
+  name VARCHAR(100),
+  unit_cost DECIMAL(10,2),
+  category VARCHAR(50),
+  weight_kg FLOAT
+);
+
+CREATE TABLE stock (
+  id INT NOT NULL,
+  warehouse_id INT,
+  product_id INT,
+  quantity INT,
+  reorder_level INT,
+  last_updated DATE
+);`,
+
+  cars: `CREATE TABLE makes (
+  id INT NOT NULL,
+  name VARCHAR(50),
+  country VARCHAR(60)
+);
+
+CREATE TABLE cars (
+  id INT NOT NULL,
+  make_id INT,
+  model VARCHAR(50),
+  year YEAR,
+  price DECIMAL(12,2),
+  color VARCHAR(30),
+  fuel_type VARCHAR(20),
+  mileage INT,
+  vin VARCHAR(17)
+);`
+};
+
+function loadSample(name) {
+  document.getElementById('createSql').value = SAMPLES[name];
+  showPanel('data');
+  handleGenerateData();
+}
+
+// ================================================================
+// PARSER — multi-table
+// ================================================================
+function parseMultipleTables(sql) {
+  const tableRegex = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"']?([a-zA-Z_][a-zA-Z0-9_]*)[`"']?\s*\(/gi;
+  const tables = [];
+  let match;
+
+  while ((match = tableRegex.exec(sql)) !== null) {
+    const tableName = match[1];
+    const startIdx = match.index + match[0].length - 1; // position of the opening (
+    let depth = 0, end = -1;
+    for (let i = startIdx; i < sql.length; i++) {
+      if (sql[i] === '(') depth++;
+      else if (sql[i] === ')') { depth--; if (depth === 0) { end = i; break; } }
+    }
+    if (end === -1) continue;
+    const innerSQL = sql.substring(startIdx + 1, end);
+    const columns = parseColumns(innerSQL, tableName);
+    if (columns.length > 0) tables.push({ name: tableName, columns });
+  }
+  return tables;
+}
+
+function parseColumns(colBlock, tableName) {
+  const colDefs = [];
+  let current = '', depth = 0;
+  for (const ch of colBlock) {
+    if (ch === '(') depth++;
+    else if (ch === ')') depth--;
+    if (ch === ',' && depth === 0) { colDefs.push(current.trim()); current = ''; }
+    else current += ch;
+  }
+  if (current.trim()) colDefs.push(current.trim());
+
+  const columns = [];
+  for (const def of colDefs) {
+    if (/^\s*(PRIMARY|FOREIGN|UNIQUE|KEY|CONSTRAINT|CHECK|INDEX)/i.test(def)) {
+      // Detect FK references
+      const fkMatch = def.match(/FOREIGN\s+KEY\s*\(`?(\w+)`?\)\s+REFERENCES\s+`?(\w+)`?\s*\(`?(\w+)`?\)/i);
+      if (fkMatch) {
+        detectedJoins.push({ tableA: tableName, colA: fkMatch[1], tableB: fkMatch[2], colB: fkMatch[3] });
+      }
+      continue;
+    }
+    const nameMatch = def.match(/^[`"']?([a-zA-Z_][a-zA-Z0-9_]*)[`"']?\s+/);
+    if (!nameMatch) continue;
+    const colName = nameMatch[1];
+    const typeMatch = def.match(/\s+([A-Z][A-Z0-9]*)(?:\([^)]*\))?/i);
+    if (!typeMatch) continue;
+    const dataType = typeMatch[1].toUpperCase();
+    const fullTypeMatch = def.match(/\s+([A-Z][A-Z0-9]*(?:\s*\([^)]*\))?)/i);
+    const fullType = fullTypeMatch ? fullTypeMatch[1] : dataType;
+    const isPK = /\bPRIMARY\s+KEY\b/i.test(def) || colName.toLowerCase() === 'id';
+    const notNull = /\bNOT\s+NULL\b/i.test(def);
+    columns.push({ name: colName, type: dataType, fullType, notNull, isPK });
+  }
+  return columns;
+}
+
+// Auto-detect FK relationships by naming convention (_id suffix)
+function autoDetectJoins(tables) {
+  for (const tbl of tables) {
+    for (const col of tbl.columns) {
+      if (col.name.toLowerCase() === 'id') continue;
+      if (col.name.toLowerCase().endsWith('_id')) {
+        const refName = col.name.slice(0, -3).toLowerCase(); // strip _id
+        const refTable = tables.find(t =>
+          t.name.toLowerCase() === refName ||
+          t.name.toLowerCase() === refName + 's' ||
+          t.name.toLowerCase() === refName + 'es'
+        );
+        if (refTable) {
+          const already = detectedJoins.find(j => j.tableA === tbl.name && j.colA === col.name);
+          if (!already) {
+            detectedJoins.push({ tableA: tbl.name, colA: col.name, tableB: refTable.name, colB: 'id' });
+          }
+        }
+      }
+    }
+  }
+}
+
+// ================================================================
+// DATA GENERATION — 35+ heuristics
+// ================================================================
+const hasFaker = typeof window.faker !== 'undefined';
+
+function generateValue(col, rowIndex, allTables) {
+  const n = col.name.toLowerCase();
+  const t = col.type;
+
+  // PK / serial
+  if (n === 'id' || col.isPK) return rowIndex + 1;
+
+  // FK columns — return plausible foreign key value
+  if (n.endsWith('_id')) return Math.floor(Math.random() * 20) + 1;
+
+  // Booleans
+  if (t === 'BOOLEAN' || t === 'TINYINT' || n.startsWith('is_') || n.startsWith('has_')) return Math.random() > 0.5 ? 1 : 0;
+
+  // Date/time
+  if (t === 'YEAR' || n.includes('year')) return 2010 + Math.floor(Math.random() * 14);
+  if (t === 'DATE' || n.match(/date|_at$|_on$/)) {
+    const from = new Date(2018, 0, 1).getTime();
+    const d = new Date(from + Math.random() * (Date.now() - from));
+    return d.toISOString().split('T')[0];
+  }
+  if (t === 'DATETIME' || t === 'TIMESTAMP' || n.includes('timestamp')) {
+    const from = new Date(2020, 0, 1).getTime();
+    const d = new Date(from + Math.random() * (Date.now() - from));
+    return d.toISOString().replace('T', ' ').slice(0, 19);
+  }
+  if (t === 'TIME') return `${String(Math.floor(Math.random()*24)).padStart(2,'0')}:${String(Math.floor(Math.random()*60)).padStart(2,'0')}:00`;
+
+  // Numerics
+  if (t.match(/^INT|^BIGINT|^SMALLINT|^MEDIUMINT/)) {
+    if (n.includes('age')) return Math.floor(Math.random() * 52) + 18;
+    if (n.match(/salary|wage/)) return Math.floor(Math.random() * 120000) + 30000;
+    if (n.match(/price|amount|cost|revenue|budget/)) return Math.floor(Math.random() * 9000) + 500;
+    if (n.match(/quantity|qty|count|stock/)) return Math.floor(Math.random() * 500) + 1;
+    if (n.match(/year/)) return 2010 + Math.floor(Math.random() * 14);
+    if (n.match(/rating|score/)) return Math.floor(Math.random() * 5) + 1;
+    if (n.match(/mileage|odometer/)) return Math.floor(Math.random() * 180000) + 5000;
+    if (n.match(/capacity|size/)) return Math.floor(Math.random() * 5000) + 100;
+    return Math.floor(Math.random() * 1000) + 1;
+  }
+  if (t.match(/^DECIMAL|^FLOAT|^DOUBLE|^NUMERIC|^REAL/)) {
+    if (n.match(/price|amount|cost|total|subtotal/)) return +(Math.random() * 2000 + 10).toFixed(2);
+    if (n.match(/salary|wage|budget/)) return +(Math.random() * 150000 + 30000).toFixed(2);
+    if (n.match(/lat|latitude/)) return +(Math.random() * 180 - 90).toFixed(6);
+    if (n.match(/lon|longitude/)) return +(Math.random() * 360 - 180).toFixed(6);
+    if (n.match(/weight|kg/)) return +(Math.random() * 100 + 0.5).toFixed(2);
+    if (n.match(/rating|score/)) return +(Math.random() * 4 + 1).toFixed(1);
+    return +(Math.random() * 10000 + 100).toFixed(2);
+  }
+
+  // UUID
+  if (t === 'UUID' || n.includes('uuid') || n.includes('guid')) {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0;
+      return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  }
+
+  // VARCHAR / CHAR / TEXT
+  if (t.match(/^VARCHAR|^CHAR|^TEXT|^TINYTEXT|^MEDIUMTEXT|^LONGTEXT|^NVARCHAR/)) {
+
+    if (hasFaker) {
+      try {
+        // Personal
+        if (n.match(/^first_?name$|^fname$/)) return faker.person.firstName();
+        if (n.match(/^last_?name$|^lname$|^surname$/)) return faker.person.lastName();
+        if (n.match(/^name$|^full_?name$/)) return faker.person.fullName();
+        if (n.match(/email/)) return faker.internet.email();
+        if (n.match(/phone|mobile|cell/)) return faker.phone.number('+## ### ### ####');
+        if (n.match(/username|user_?name/)) return faker.internet.userName();
+        if (n.match(/password/)) return faker.internet.password({ length: 12 });
+        if (n.match(/bio|description|about/)) return faker.lorem.sentence();
+        if (n.match(/avatar|photo|image|img|picture/)) return faker.internet.url() + '/avatar.jpg';
+
+        // Address
+        if (n.match(/address|street|addr/)) return faker.location.streetAddress();
+        if (n.match(/city/)) return faker.location.city();
+        if (n.match(/state|province|region/)) return faker.location.state();
+        if (n.match(/country/)) return faker.location.country();
+        if (n.match(/zip|postal|postcode/)) return faker.location.zipCode();
+
+        // Business
+        if (n.match(/company|employer|firm|organization/)) return faker.company.name();
+        if (n.match(/department|dept/)) return faker.commerce.department();
+        if (n.match(/job_?title|position|role|occupation/)) return faker.person.jobTitle();
+
+        // Product
+        if (n.match(/^name$|^title$|product_?name/)) return faker.commerce.productName();
+        if (n.match(/category|genre/)) return faker.commerce.department();
+        if (n.match(/description|summary|note/)) return faker.commerce.productDescription().slice(0, 100);
+        if (n.match(/sku|barcode|code/)) return faker.string.alphanumeric(8).toUpperCase();
+
+        // Vehicle
+        if (n.match(/^make$/)) return faker.vehicle.manufacturer();
+        if (n.match(/^model$/)) return faker.vehicle.model();
+        if (n.match(/vin/)) return faker.vehicle.vin();
+        if (n.match(/fuel_?type|fuel/)) return faker.helpers.arrayElement(['Petrol','Diesel','Electric','Hybrid','LPG']);
+        if (n.match(/color|colour/)) return faker.color.human();
+
+        // Status enums
+        if (n.match(/^status$/)) return faker.helpers.arrayElement(['active','inactive','pending','completed','cancelled','processing']);
+        if (n.match(/^type$/)) return faker.helpers.arrayElement(['standard','premium','basic','enterprise','trial']);
+        if (n.match(/^priority$/)) return faker.helpers.arrayElement(['low','medium','high','critical']);
+        if (n.match(/^gender$/)) return faker.helpers.arrayElement(['male','female','non-binary','prefer not to say']);
+
+        // Internet
+        if (n.match(/url|website|link|href/)) return faker.internet.url();
+        if (n.match(/ip_?address|ip$/)) return faker.internet.ip();
+        if (n.match(/mac_?address|mac$/)) return faker.internet.mac();
+        if (n.match(/user_?agent/)) return faker.internet.userAgent();
+        if (n.match(/domain/)) return faker.internet.domainName();
+
+        // Finance
+        if (n.match(/currency/)) return faker.helpers.arrayElement(['USD','EUR','GBP','JPY','CAD','AUD']);
+        if (n.match(/card_?number|card_?no/)) return faker.finance.creditCardNumber();
+        if (n.match(/iban/)) return faker.finance.iban();
+
+        // Lorem fallback
+        if (n.match(/note|comment|message|body|content|text/)) return faker.lorem.sentence();
+        if (n.match(/tag|label|keyword/)) return faker.lorem.word();
+      } catch(e) {/* fall through */}
+    }
+
+    // Generic fallback
+    return `${n}_${Math.random().toString(36).slice(2, 7)}`;
+  }
+
+  if (t === 'ENUM') {
+    const enumMatch = col.fullType.match(/ENUM\s*\(([^)]+)\)/i);
+    if (enumMatch) {
+      const opts = enumMatch[1].split(',').map(s => s.trim().replace(/['"]/g, ''));
+      return opts[Math.floor(Math.random() * opts.length)];
+    }
+  }
+
+  if (t === 'SET') return null;
+  if (t === 'JSON') return JSON.stringify({ key: Math.random().toString(36).slice(2, 7) });
+
+  return col.notNull ? 'N/A' : null;
+}
+
+function escapeSQL(val) {
+  if (val === null || val === undefined) return 'NULL';
+  if (typeof val === 'number') return String(val);
+  return `'${String(val).replace(/\\/g, '\\\\').replace(/'/g, "''")}'`;
+}
+
+function dialectQuote(name, dialect) {
+  if (dialect === 'postgres' || dialect === 'sqlite') return `"${name}"`;
+  if (dialect === 'mssql') return `[${name}]`;
+  return `\`${name}\``;
+}
+
+function generateInserts(table, numRows, dialect) {
+  const Q = (n) => dialectQuote(n, dialect);
+  const colNames = table.columns.map(c => Q(c.name)).join(', ');
+  const rows = Array.from({ length: numRows }, (_, i) => {
+    const values = table.columns.map(col => escapeSQL(generateValue(col, i, parsedTables)));
+    return `  (${values.join(', ')})`;
+  });
+  const tablePart = `INSERT INTO ${Q(table.name)} (${colNames}) VALUES\n${rows.join(',\n')};`;
+  return tablePart;
+}
+
+// ================================================================
+// SCHEMA RENDERER
+// ================================================================
+function typeClass(type) {
+  if (type.match(/INT|BIGINT|SMALLINT/)) return 'int';
+  if (type.match(/VARCHAR|CHAR|TEXT|ENUM/)) return 'str';
+  if (type.match(/DECIMAL|FLOAT|DOUBLE|NUMERIC/)) return 'dec';
+  if (type.match(/DATE|TIME|YEAR|TIMESTAMP/)) return 'date';
+  return 'other';
+}
+
+function renderSchema() {
+  if (!parsedTables.length) return;
+  const container = document.getElementById('schema-render');
+  let html = '';
+
+  for (const tbl of parsedTables) {
+    const fkCols = detectedJoins.filter(j => j.tableA === tbl.name).map(j => j.colA);
+    html += `<div class="schema-table">
+      <div class="schema-table-header">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0">
+          <rect x="1" y="1" width="12" height="4" rx="1" stroke="currentColor" stroke-width="1.2"/>
+          <rect x="1" y="8" width="12" height="4" rx="1" stroke="currentColor" stroke-width="1.2"/>
+        </svg>
+        <span class="schema-table-name">${tbl.name}</span>
+        <span style="margin-left:auto;font-weight:400;color:var(--text3);font-size:11px">${tbl.columns.length} cols</span>
+      </div>
+      <div class="schema-col-list">`;
+    for (const col of tbl.columns) {
+      const tc = typeClass(col.type);
+      const isFk = fkCols.includes(col.name);
+      html += `<div class="schema-col">
+        <span class="col-name">${col.name}</span>
+        <span class="col-type ${tc}">${col.fullType || col.type}</span>
+        ${col.isPK ? '<span class="pk-badge">PK</span>' : ''}
+        ${isFk ? '<span class="fk-badge">FK</span>' : ''}
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  container.innerHTML = html;
+
+  // Joins panel
+  if (detectedJoins.length) {
+    document.getElementById('join-card').style.display = '';
+    let jhtml = '';
+    for (const j of detectedJoins) {
+      jhtml += `<div class="join-diagram">
+        <div class="join-table-pill"><strong>${j.tableA}</strong>.${j.colA}</div>
+        <div class="join-arrow">
+          <svg width="40" height="16" viewBox="0 0 40 16"><line x1="0" y1="8" x2="32" y2="8" stroke="var(--accent3)" stroke-width="1.5"/><polygon points="32,4 40,8 32,12" fill="var(--accent3)"/></svg>
+          <span>FK → PK</span>
+        </div>
+        <div class="join-table-pill"><strong>${j.tableB}</strong>.${j.colB}</div>
+      </div>`;
+    }
+    document.getElementById('join-render').innerHTML = jhtml;
+  }
+
+  updateStatus();
+}
+
+function updateStatus() {
+  const names = parsedTables.map(t => t.name).join(', ');
+  document.getElementById('schema-status').textContent =
+    parsedTables.length ? `${parsedTables.length} table(s): ${names}` : 'No schema parsed';
+}
+
+// ================================================================
+// MAIN GENERATE HANDLER
+// ================================================================
+async function handleGenerateData() {
+  const sql = document.getElementById('createSql').value.trim();
+  const numRows = parseInt(document.getElementById('rowCount').value, 10);
+  const dialect = document.getElementById('dialectSelect').value;
+  const outputEl = document.getElementById('output');
+
+  if (!sql) { outputEl.textContent = '-- Please enter a CREATE TABLE statement.'; return; }
+  if (isNaN(numRows) || numRows < 1) { outputEl.textContent = '-- Invalid row count.'; return; }
+
+  outputEl.textContent = '⏳  Parsing schema…';
+  await new Promise(r => setTimeout(r, 10));
+
+  detectedJoins = [];
+  parsedTables = parseMultipleTables(sql);
+
+  if (!parsedTables.length) {
+    outputEl.innerHTML = '<span style="color:var(--accent3)">-- Error: No valid CREATE TABLE found. Check your syntax.</span>';
+    return;
+  }
+
+  autoDetectJoins(parsedTables);
+
+  const parts = parsedTables.map(tbl => {
+    const header = `-- ============================================================\n-- Table: ${tbl.name}\n-- ============================================================`;
+    return header + '\n' + generateInserts(tbl, numRows, dialect);
+  });
+
+  lastSQL = parts.join('\n\n');
+  lastTableName = parsedTables[0].name;
+  outputEl.textContent = lastSQL;
+
+  const lineCount = lastSQL.split('\n').length;
+  document.getElementById('output-lines').textContent = `${lineCount} lines`;
+  document.getElementById('output-status').textContent = `${parsedTables.length} table(s) · ${parsedTables.reduce((s,t)=>s+t.columns.length,0)} columns · ${numRows} rows each`;
+
+  renderSchema();
+}
+
+// ================================================================
+// COPY / DOWNLOAD
+// ================================================================
+function copyOutput() {
+  if (!lastSQL) return;
+  navigator.clipboard.writeText(lastSQL).then(() => {
+    const btn = document.getElementById('copyBtn');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('btn-green');
+    btn.classList.remove('btn-ghost');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('btn-green'); btn.classList.add('btn-ghost'); }, 2000);
+  });
+}
+
+function downloadOutput() {
+  if (!lastSQL) return;
+  const blob = new Blob([lastSQL], { type: 'application/sql' });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: `${lastTableName}_mock_data.sql` });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ================================================================
+// QUESTION GENERATOR — improved rule-based
+// ================================================================
+function handleGenerateQuestions() {
+  if (!parsedTables.length) {
+    // Try auto-parse
+    handleGenerateData().then(() => {
+      if (parsedTables.length) renderQuestions();
+    });
+    return;
+  }
+  renderQuestions();
+}
+
+function pickRandom(arr) { return arr.length ? arr[Math.floor(Math.random() * arr.length)] : null; }
+
+function generateAllQuestions(difficulty, topic, count) {
+  const questions = [];
+
+  const allNumeric = parsedTables.flatMap(t =>
+    t.columns.filter(c => c.type.match(/INT|DECIMAL|FLOAT|DOUBLE/)).map(c => ({ table: t.name, col: c.name }))
+  );
+  const allString = parsedTables.flatMap(t =>
+    t.columns.filter(c => c.type.match(/VARCHAR|TEXT|CHAR/)).map(c => ({ table: t.name, col: c.name }))
+  );
+  const allDate = parsedTables.flatMap(t =>
+    t.columns.filter(c => c.type.match(/DATE|TIMESTAMP|DATETIME/)).map(c => ({ table: t.name, col: c.name }))
+  );
+
+  const addQ = (q, a, tag, diff) => questions.push({ question: q, answer: a, tag, diff });
+
+  // ── BASIC ──────────────────────────────────────────────────
+  const basicQs = () => {
+    for (const tbl of parsedTables) {
+      const str = tbl.columns.find(c => c.type.match(/VARCHAR|TEXT/) && !c.name.match(/email|url|phone/));
+      const num = tbl.columns.find(c => c.type.match(/INT|DECIMAL/));
+      const cols2 = tbl.columns.slice(0, 2).map(c => c.name);
+
+      if (str) addQ(
+        `Select all records from \`${tbl.name}\` where \`${str.name}\` starts with the letter 'A'.`,
+        `SELECT * FROM ${tbl.name}\nWHERE ${str.name} LIKE 'A%';`,
+        'LIKE', 'easy'
+      );
+
+      if (num) addQ(
+        `Retrieve all rows in \`${tbl.name}\` where \`${num.name}\` is greater than 100, sorted descending.`,
+        `SELECT * FROM ${tbl.name}\nWHERE ${num.name} > 100\nORDER BY ${num.name} DESC;`,
+        'ORDER BY', 'easy'
+      );
+
+      addQ(
+        `Select only the \`${cols2.join('` and `')}\` columns from \`${tbl.name}\`.`,
+        `SELECT ${cols2.join(', ')} FROM ${tbl.name};`,
+        'SELECT', 'easy'
+      );
+
+      addQ(
+        `Find the total number of records in \`${tbl.name}\`.`,
+        `SELECT COUNT(*) AS total FROM ${tbl.name};`,
+        'COUNT', 'easy'
+      );
+
+      if (str) addQ(
+        `List all distinct values in the \`${str.name}\` column of \`${tbl.name}\`.`,
+        `SELECT DISTINCT ${str.name} FROM ${tbl.name};`,
+        'DISTINCT', 'easy'
+      );
+
+      if (allDate.length) {
+        const d = pickRandom(allDate);
+        addQ(
+          `Find all rows in \`${d.table}\` where \`${d.col}\` falls between '2022-01-01' and '2023-12-31'.`,
+          `SELECT * FROM ${d.table}\nWHERE ${d.col} BETWEEN '2022-01-01' AND '2023-12-31';`,
+          'BETWEEN', 'easy'
+        );
+      }
+
+      if (num) addQ(
+        `Return the top 5 rows from \`${tbl.name}\` ordered by \`${num.name}\` descending.`,
+        `SELECT * FROM ${tbl.name}\nORDER BY ${num.name} DESC\nLIMIT 5;`,
+        'LIMIT', 'easy'
+      );
+    }
+  };
+
+  // ── AGGREGATE / GROUP BY ────────────────────────────────────
+  const aggregateQs = () => {
+    for (const tbl of parsedTables) {
+      const num = tbl.columns.find(c => c.type.match(/INT|DECIMAL|FLOAT/));
+      const str = tbl.columns.find(c => c.type.match(/VARCHAR|TEXT/) && tbl.columns.filter(c2 => c2.type.match(/VARCHAR/)).length > 1);
+      const str2 = tbl.columns.filter(c => c.type.match(/VARCHAR|TEXT/))[1];
+
+      if (num) addQ(
+        `Calculate the total \`SUM\` and average \`AVG\` of \`${num.name}\` in \`${tbl.name}\`.`,
+        `SELECT\n  SUM(${num.name}) AS total_${num.name},\n  AVG(${num.name}) AS avg_${num.name}\nFROM ${tbl.name};`,
+        'SUM/AVG', 'medium'
+      );
+
+      if (str && num) addQ(
+        `Group \`${tbl.name}\` by \`${str.name}\` and return the maximum \`${num.name}\` per group.`,
+        `SELECT ${str.name}, MAX(${num.name}) AS max_${num.name}\nFROM ${tbl.name}\nGROUP BY ${str.name};`,
+        'GROUP BY', 'medium'
+      );
+
+      if (str && num) addQ(
+        `Count the number of records for each distinct \`${str.name}\` in \`${tbl.name}\`, ordered by count descending.`,
+        `SELECT ${str.name}, COUNT(*) AS record_count\nFROM ${tbl.name}\nGROUP BY ${str.name}\nORDER BY record_count DESC;`,
+        'GROUP BY', 'medium'
+      );
+
+      if (str && str2 && num) addQ(
+        `For each \`${str.name}\`, find the total \`${num.name}\`. Only include groups where the total exceeds 500.`,
+        `SELECT ${str.name}, SUM(${num.name}) AS total\nFROM ${tbl.name}\nGROUP BY ${str.name}\nHAVING SUM(${num.name}) > 500;`,
+        'HAVING', 'medium'
+      );
+
+      if (num) addQ(
+        `Find the minimum and maximum values of \`${num.name}\` in \`${tbl.name}\`.`,
+        `SELECT MIN(${num.name}) AS min_val, MAX(${num.name}) AS max_val\nFROM ${tbl.name};`,
+        'MIN/MAX', 'medium'
+      );
+    }
+  };
+
+  // ── JOIN QUESTIONS ──────────────────────────────────────────
+  const joinQs = () => {
+    for (const j of detectedJoins) {
+      const tA = parsedTables.find(t => t.name === j.tableA);
+      const tB = parsedTables.find(t => t.name === j.tableB);
+      if (!tA || !tB) continue;
+
+      const displayColsA = tA.columns.filter(c => c.name !== j.colA && !c.name.endsWith('_id')).slice(0, 2).map(c => `${j.tableA}.${c.name}`);
+      const displayColsB = tB.columns.filter(c => c.name !== j.colB).slice(0, 2).map(c => `${j.tableB}.${c.name}`);
+      const selectCols = [...displayColsA, ...displayColsB].join(', ') || '*';
+
+      addQ(
+        `Write an INNER JOIN query that combines \`${j.tableA}\` and \`${j.tableB}\` on the foreign key relationship.`,
+        `SELECT ${selectCols}\nFROM ${j.tableA}\nINNER JOIN ${j.tableB}\n  ON ${j.tableA}.${j.colA} = ${j.tableB}.${j.colB};`,
+        'INNER JOIN', 'medium'
+      );
+
+      addQ(
+        `Using a LEFT JOIN, find all records from \`${j.tableA}\` including those with no matching row in \`${j.tableB}\`.`,
+        `SELECT ${j.tableA}.*, ${j.tableB}.${displayColsB[0]?.split('.')[1] || '*'}\nFROM ${j.tableA}\nLEFT JOIN ${j.tableB}\n  ON ${j.tableA}.${j.colA} = ${j.tableB}.${j.colB};`,
+        'LEFT JOIN', 'medium'
+      );
+
+      const numB = tB.columns.find(c => c.type.match(/INT|DECIMAL/));
+      if (numB) addQ(
+        `Join \`${j.tableA}\` and \`${j.tableB}\` and count the number of \`${j.tableA}\` records per \`${j.tableB}\` entry.`,
+        `SELECT ${j.tableB}.${j.colB}, COUNT(${j.tableA}.id) AS cnt\nFROM ${j.tableB}\nLEFT JOIN ${j.tableA}\n  ON ${j.tableB}.${j.colB} = ${j.tableA}.${j.colA}\nGROUP BY ${j.tableB}.${j.colB}\nORDER BY cnt DESC;`,
+        'JOIN + GROUP', 'hard'
+      );
+    }
+
+    // Multi-table joins (3 tables)
+    if (detectedJoins.length >= 2) {
+      const j1 = detectedJoins[0], j2 = detectedJoins[1];
+      if (j1.tableA !== j2.tableA) {
+        addQ(
+          `Write a query that joins three tables: \`${j1.tableB}\`, \`${j1.tableA}\`, and \`${j2.tableA}\` using their FK relationships.`,
+          `SELECT *\nFROM ${j1.tableB}\nINNER JOIN ${j1.tableA}\n  ON ${j1.tableB}.${j1.colB} = ${j1.tableA}.${j1.colA}\nINNER JOIN ${j2.tableA}\n  ON ${j1.tableA}.id = ${j2.tableA}.${j2.colA};`,
+          '3-TABLE JOIN', 'hard'
+        );
+      }
+    }
+  };
+
+  // ── SUBQUERIES ──────────────────────────────────────────────
+  const subqueryQs = () => {
+    for (const tbl of parsedTables) {
+      const num = tbl.columns.find(c => c.type.match(/INT|DECIMAL/));
+      const str = tbl.columns.find(c => c.type.match(/VARCHAR/));
+
+      if (num) addQ(
+        `Find all rows in \`${tbl.name}\` where \`${num.name}\` is above the overall average.`,
+        `SELECT * FROM ${tbl.name}\nWHERE ${num.name} > (\n  SELECT AVG(${num.name}) FROM ${tbl.name}\n);`,
+        'SUBQUERY', 'hard'
+      );
+
+      if (num) addQ(
+        `Return the record(s) with the single highest \`${num.name}\` in \`${tbl.name}\`.`,
+        `SELECT * FROM ${tbl.name}\nWHERE ${num.name} = (\n  SELECT MAX(${num.name}) FROM ${tbl.name}\n);`,
+        'SUBQUERY', 'hard'
+      );
+
+      if (detectedJoins.length && str) {
+        const j = detectedJoins.find(jj => jj.tableA === tbl.name);
+        if (j) addQ(
+          `Use a subquery with IN to find all \`${tbl.name}\` records whose \`${j.colA}\` appears in the \`${j.tableB}\` table.`,
+          `SELECT * FROM ${tbl.name}\nWHERE ${j.colA} IN (\n  SELECT ${j.colB} FROM ${j.tableB}\n);`,
+          'IN SUBQUERY', 'hard'
+        );
+      }
+    }
+  };
+
+  // ── WINDOW FUNCTIONS ────────────────────────────────────────
+  const windowQs = () => {
+    for (const tbl of parsedTables) {
+      const num = tbl.columns.find(c => c.type.match(/INT|DECIMAL/));
+      const str = tbl.columns.find(c => c.type.match(/VARCHAR/));
+
+      if (num) addQ(
+        `Use a window function to rank each row in \`${tbl.name}\` by \`${num.name}\` (highest first).`,
+        `SELECT *,\n  RANK() OVER (ORDER BY ${num.name} DESC) AS rnk\nFROM ${tbl.name};`,
+        'WINDOW', 'hard'
+      );
+
+      if (num && str) addQ(
+        `For each \`${str.name}\`, compute a running total of \`${num.name}\` ordered by the primary key.`,
+        `SELECT ${str.name}, ${num.name},\n  SUM(${num.name}) OVER (\n    PARTITION BY ${str.name}\n    ORDER BY id\n  ) AS running_total\nFROM ${tbl.name};`,
+        'WINDOW', 'hard'
+      );
+
+      if (num) addQ(
+        `Use ROW_NUMBER() to assign a unique row number to each record in \`${tbl.name}\`, partitioned by nothing, ordered by \`${num.name}\` desc.`,
+        `SELECT *,\n  ROW_NUMBER() OVER (ORDER BY ${num.name} DESC) AS row_num\nFROM ${tbl.name};`,
+        'WINDOW', 'hard'
+      );
+    }
+  };
+
+  // Build pool by topic
+  const diffMap = { easy: ['easy'], medium: ['easy','medium'], hard: ['medium','hard'] };
+  const allowedDiffs = diffMap[difficulty];
+
+  if (topic === 'basic' || topic === 'mixed') basicQs();
+  if (topic === 'aggregate' || topic === 'group' || topic === 'mixed') aggregateQs();
+  if ((topic === 'joins' || topic === 'mixed') && detectedJoins.length) joinQs();
+  if (topic === 'subquery' || topic === 'mixed') subqueryQs();
+  if (topic === 'window' || topic === 'mixed') windowQs();
+
+  // If no joins detected but joins requested, fallback
+  if ((topic === 'joins') && !detectedJoins.length) {
+    basicQs(); aggregateQs();
+  }
+
+  // Filter by difficulty and shuffle
+  const filtered = questions.filter(q => allowedDiffs.includes(q.diff));
+  const shuffled = filtered.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
+function renderQuestions() {
+  const topic = document.getElementById('topicSelect').value;
+  const difficulty = document.getElementById('difficultySelect').value;
+  const count = parseInt(document.getElementById('qCountSelect').value);
+  const container = document.getElementById('questionsContainer');
+
+  const questions = generateAllQuestions(difficulty, topic, count);
+
+  if (!questions.length) {
+    container.innerHTML = `<div class="error-box">Could not generate questions for this combination. Try a different topic or difficulty, or ensure your schema has appropriate column types.</div>`;
+    return;
+  }
+
+  const diffColors = { easy: 'green', medium: '', hard: 'orange' };
+  const tagColors = {
+    'INNER JOIN': 'badge-join', 'LEFT JOIN': 'badge-join', '3-TABLE JOIN': 'badge-join', 'JOIN + GROUP': 'badge-join',
+    'WINDOW': 'badge-hard', 'SUBQUERY': 'badge-hard', 'IN SUBQUERY': 'badge-hard',
+    'HAVING': 'badge-medium', 'GROUP BY': 'badge-medium',
+    'SUM/AVG': 'badge-medium', 'MIN/MAX': 'badge-medium',
+  };
+
+  let html = `<div class="stats-row" style="margin-bottom:20px">
+    <div class="stat-chip"><strong>${questions.length}</strong> questions generated</div>
+    <div class="stat-chip"><strong>${parsedTables.length}</strong> table(s)</div>
+    <div class="stat-chip"><strong>${detectedJoins.length}</strong> relationship(s) detected</div>
+  </div>`;
+
+  questions.forEach((q, i) => {
+    const id = `ans_${i}`;
+    const numClass = diffColors[q.diff] || '';
+    const tagClass = tagColors[q.tag] || 'badge-easy';
+    html += `<div class="q-card">
+      <div class="q-card-header">
+        <div class="q-num ${numClass}">${i + 1}</div>
+        <div class="q-text">${q.question}</div>
+        <span class="badge ${tagClass}">${q.tag}</span>
+      </div>
+      <div class="q-body">
+        <button class="btn btn-ghost btn-sm" onclick="toggleAnswer('${id}', this)" style="margin-bottom:10px">
+          Show Answer
+        </button>
+        <div class="answer-box" id="${id}">${q.answer}</div>
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function toggleAnswer(id, btn) {
+  const el = document.getElementById(id);
+  const shown = el.style.display === 'block';
+  el.style.display = shown ? 'none' : 'block';
+  btn.textContent = shown ? 'Show Answer' : 'Hide Answer';
+}
+
+// ================================================================
+// INIT
+// ================================================================
+window.addEventListener('load', () => {
+  loadSample('ecommerce');
+});
+</script>
+</body>
+</html>
